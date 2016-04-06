@@ -5,5 +5,5 @@ default: run-foo
 run-foo: foo
 	./foo
 
-foo:
+foo: $(shell find . -name '*.rs')
 	$(RUSTC) foo.rs -Z orbit -C link-dead-code

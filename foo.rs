@@ -1,6 +1,7 @@
 #![feature(core_intrinsics, patchpoint_call_intrinsic, stackmap_call_intrinsic)]
 #![feature(question_mark)]
 #![feature(type_ascription)]
+#![feature(rustc_attrs)]
 #![allow(unused_features)]
 
 use std::intrinsics;
@@ -45,6 +46,7 @@ impl std::convert::From<elf::ParseError> for DemoError {
     fn from(x: elf::ParseError) -> Self { DemoError::ParseError(x) }
 }
 
+#[rustc_mir(borrowck_graphviz_postflow="/tmp/foo.dot")]
 fn demo() -> Result<(), DemoError> {
     use std::path::Path;
     use self::llvm_stackmaps::StackMap;
@@ -70,7 +72,10 @@ fn demo() -> Result<(), DemoError> {
     let stack_map = StackMap::read_from::<LittleEndian>(&mut &stackmap_section.data[..]);
     println!("stack_map: {:?}", stack_map);
     
-    let data = &mut [b'h', b'e', b'l', b'l', b'o', 0];
+    let mut data = vec![b'h', b'e', b'l', b'l', b'o', 0];
+    println!("path addr: {:?}", &path as *const _);
+    println!("file addr: {:?}", &file as *const _);
+    println!("data addr: {:?}", &data as *const _);
     unsafe {
         intrinsics::stackmap_call(0, 13, subcall, data.as_mut_ptr());
     }

@@ -149,9 +149,9 @@ pub struct NumConstants(pub u32);
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct NumRecords(pub u32);
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub struct NumLocations(pub u32);
+pub struct NumLocations(pub u16);
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub struct NumLiveOuts(pub u32);
+pub struct NumLiveOuts(pub u16);
 
 trait ToUsize { fn to_usize(&self) -> usize; }
 
@@ -267,27 +267,36 @@ impl<T:ByteOrder> ReadFrom<T> for u8 {
     }
 }
 
-macro_rules! impl_read_from_for_u32_wrapper {
-    ($S:ident) => {
+macro_rules! impl_read_from_for_u_wrapper {
+    ($S:ident, $read_u:ident, $size:expr) => {
         impl<T:ByteOrder> ReadFrom<T> for $S {
             fn read(b: &[u8], i: usize) -> Result<(Self, usize), ReadError> {
-                if b.len() < (i + 4) {
+                if b.len() < (i + $size) {
                     return Err(PrimError::Truncated {
                         want: stringify!($S),
                         at: i,
                     }.into());
                 }
-                Ok(($S(T::read_u32(b.split_at(i).1)), 4))
+                Ok(($S(T::$read_u(b.split_at(i).1)), i+$size))
             }
         }
     }
 }
 
+macro_rules! impl_read_from_for_u32_wrapper {
+    ($S:ident) => { impl_read_from_for_u_wrapper!($S, read_u32, 4); }
+}
+
+macro_rules! impl_read_from_for_u16_wrapper {
+    ($S:ident) => { impl_read_from_for_u_wrapper!($S, read_u16, 2); }
+}
+
 impl_read_from_for_u32_wrapper!(NumFunctions);
 impl_read_from_for_u32_wrapper!(NumConstants);
 impl_read_from_for_u32_wrapper!(NumRecords);
-impl_read_from_for_u32_wrapper!(NumLocations);
-impl_read_from_for_u32_wrapper!(NumLiveOuts);
+
+impl_read_from_for_u16_wrapper!(NumLocations);
+impl_read_from_for_u16_wrapper!(NumLiveOuts);
 
 impl<T:ByteOrder> ReadMany<T> for StackSize { type Count = NumFunctions; }
 impl<T:ByteOrder> ReadMany<T> for LargeConstant { type Count = NumConstants; }

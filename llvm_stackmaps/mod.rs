@@ -82,6 +82,11 @@ pub mod errors {
         Constant(ConstantError),
     }
     #[derive(Debug)]
+    pub enum LocationError {
+        Prim(PrimError),
+        InvalidVariant(u8),
+    }
+    #[derive(Debug)]
     pub enum PrimError {
         Truncated { want: &'static str, at: usize },
         Io(io::Error),
@@ -112,6 +117,7 @@ pub mod errors {
         StackSize(StackSizeError),
         LargeConstant(LargeConstantError),
         Record(RecordError),
+        Location(LocationError),
         Prim(PrimError),
     }
     
@@ -368,13 +374,21 @@ impl<T:ByteOrder> ReadFrom<T> for Location {
         let (rs, i): (u8, _) = ReadFrom::<T>::read(b, i)?;
         let (dr, i): (u16, _) = ReadFrom::<T>::read(b, i)?;
         let (os, i): (i32, _) = ReadFrom::<T>::read(b, i)?;
+
+        let variant = match vt {
+            0x1 => LocationVariant::Register { dwarf_regnum: dr },
+            0x2 => LocationVariant::Direct { dwarf_regnum: dr, offset: os },
+            0x3 => LocationVariant::Indirect { dwarf_regnum: dr, offset: os },
+            0x4 => LocationVariant::Constant { value : os },
+            0x5 => LocationVariant::ConstIndex { offset: os },
+            other => return Err(LocationError::InvalidVariant(other).into()),
+        };
+
         Ok((Location {
-            val_type: vt,
             reserved: rs,
-            dwarf_regnum: dr,
-            offset_or_small_constant: os,
+            variant: variant,
         }, i))
-    }    
+    }
 }
 
 impl<T:ByteOrder> ReadMany<T> for LiveOut { type Count = NumLiveOuts; }
@@ -432,11 +446,19 @@ pub struct Record {
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Location {
-    val_type: u8,
     reserved: u8,
-    dwarf_regnum: u16,
-    offset_or_small_constant: i32,
+    variant: LocationVariant,
 }
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub enum LocationVariant {
+    Register { dwarf_regnum: u16 }, // (offset_or_small_constant 0 in this case)
+    Direct   { dwarf_regnum: u16, offset: i32 },
+    Indirect { dwarf_regnum: u16, offset: i32 },
+    Constant { value: i32 },
+    ConstIndex { offset: i32 }, // I *assume* the dwarf_regnum is unused here...
+}
+
 
 #[repr(u8)]
 #[derive(Clone, PartialEq, Eq, Debug)]

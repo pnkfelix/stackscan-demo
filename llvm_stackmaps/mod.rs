@@ -43,9 +43,6 @@
 //! ```
 
 use byteorder::{ByteOrder, ReadBytesExt};
-use byteorder::{BigEndian, LittleEndian};
-
-
 
 use std::io::{Read};
 

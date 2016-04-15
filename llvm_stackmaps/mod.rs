@@ -199,21 +199,21 @@ trait ReadMany<T:ByteOrder>: ReadFrom<T> {
 
 impl<T:ByteOrder> ReadFrom<T> for StackMap {
     fn read(b: &[u8], i: usize) -> Result<(Self, usize), ReadError> {
-        println!("StackMap::read b: {:?} i: {}", b, i);
+        debug!("StackMap::read b: {:?} i: {}", b, i);
         let (hr, i): (Header, _) = ReadFrom::<T>::read(b, i)?;
-        println!("StackMap::read hr: {:?} i: {}", hr, i);
+        debug!("StackMap::read hr: {:?} i: {}", hr, i);
         let (nf, i): (NumFunctions, _) = ReadFrom::<T>::read(b, i)?;
-        println!("StackMap::read nf: {:?} i: {}", nf, i);
+        debug!("StackMap::read nf: {:?} i: {}", nf, i);
         let (nc, i): (NumConstants, _) = ReadFrom::<T>::read(b, i)?;
-        println!("StackMap::read nc: {:?} i: {}", nc, i);
+        debug!("StackMap::read nc: {:?} i: {}", nc, i);
         let (nr, i): (NumRecords, _) = ReadFrom::<T>::read(b, i)?;
-        println!("StackMap::read nr: {:?} i: {}", nr, i);
+        debug!("StackMap::read nr: {:?} i: {}", nr, i);
         let (ss, i): (Vec<StackSize>, _) = ReadMany::<T>::read_many(b, i, &nf)?;
-        println!("StackMap::read ss: {:?} i: {}", ss, i);
+        debug!("StackMap::read ss: {:?} i: {}", ss, i);
         let (cs, i): (Vec<LargeConstant>, _) = ReadMany::<T>::read_many(b, i, &nc)?;
-        println!("StackMap::read cs: {:?} i: {}", cs, i);
+        debug!("StackMap::read cs: {:?} i: {}", cs, i);
         let (rs, i): (Vec<Record>, _) = ReadMany::<T>::read_many(b, i, &nr)?;
-        println!("StackMap::read rs: {:?} i: {}", rs, i);
+        debug!("StackMap::read rs: {:?} i: {}", rs, i);
         Ok((StackMap { header: hr,
                        stack_sizes: ss,
                        large_constants: cs,
@@ -223,13 +223,13 @@ impl<T:ByteOrder> ReadFrom<T> for StackMap {
 
 impl<T:ByteOrder> ReadFrom<T> for Header {
     fn read(b: &[u8], i: usize) -> Result<(Self, usize), ReadError> {
-        println!("Header::read b: {:?} i: {}", b, i);
+        debug!("Header::read b: {:?} i: {}", b, i);
         let (version, i): (u8, _) = ReadFrom::<T>::read(b, i)?;
-        println!("Header::read version: {} i: {}", version, i);
+        debug!("Header::read version: {} i: {}", version, i);
         let (reserved_1, i): (u8, _) = ReadFrom::<T>::read(b, i)?;
-        println!("Header::read reserved_1: {} i: {}", reserved_1, i);
+        debug!("Header::read reserved_1: {} i: {}", reserved_1, i);
         let (reserved_2, i): (u16, _) = ReadFrom::<T>::read(b, i)?;
-        println!("Header::read reserved_2: {} i: {}", reserved_2, i);
+        debug!("Header::read reserved_2: {} i: {}", reserved_2, i);
         Ok((Header { version: version,
                      reserved_1: reserved_1,
                      reserved_2: reserved_2, }, i))
@@ -308,11 +308,11 @@ impl<T:ByteOrder> ReadMany<T> for Location { type Count = NumLocations; }
 
 impl<T:ByteOrder> ReadFrom<T> for StackSize {
     fn read(b: &[u8], i: usize) -> ReadResult<Self> {
-        println!("StackSize::read b: {:?} i: {}", b, i);
+        debug!("StackSize::read b: {:?} i: {}", b, i);
         let (fa, i): (u64, _) = ReadFrom::<T>::read(b, i)?;
-        println!("StackSize::read fa: {:?} i: {}", fa, i);
+        debug!("StackSize::read fa: {:?} i: {}", fa, i);
         let (ss, i): (u64, _) = ReadFrom::<T>::read(b, i)?;
-        println!("StackSize::read ss: {:?} i: {}", ss, i);
+        debug!("StackSize::read ss: {:?} i: {}", ss, i);
         Ok((StackSize { function_address: fa,
                         stack_size: ss }, i))
     }
@@ -327,30 +327,30 @@ impl<T:ByteOrder> ReadFrom<T> for LargeConstant {
 
 impl<T:ByteOrder> ReadFrom<T> for Record {
     fn read(b: &[u8], i: usize) -> ReadResult<Self> {
-        println!("Record::read b: {:?} i: {}", b, i);
+        debug!("Record::read b: {:?} i: {}", b, i);
         let (pi, i): (u64, _) = ReadFrom::<T>::read(b, i)?;
-        println!("Record::read pi: {:?}, i: {}", pi, i);
+        debug!("Record::read pi: {:?}, i: {}", pi, i);
         let (io, i): (u32, _) = ReadFrom::<T>::read(b, i)?;
-        println!("Record::read io: {:?}, i: {}", io, i);
+        debug!("Record::read io: {:?}, i: {}", io, i);
         let (rs, i): (u16, _) = ReadFrom::<T>::read(b, i)?;
-        println!("Record::read rs: {:?}, i: {}", rs, i);
+        debug!("Record::read rs: {:?}, i: {}", rs, i);
         let (nl, i): (NumLocations, _) = ReadFrom::<T>::read(b, i)?;
-        println!("Record::read nl: {:?}, i: {}", nl, i);
+        debug!("Record::read nl: {:?}, i: {}", nl, i);
         let (ls, i): (Vec<Location>, _) = ReadMany::<T>::read_many(b, i, &nl)?;
-        println!("Record::read ls: {:?}, i: {}", ls, i);
+        debug!("Record::read ls: {:?}, i: {}", ls, i);
         let (p1, i): (u16, _) = ReadFrom::<T>::read(b, i)?;
-        println!("Record::read p1: {:?}, i: {}", p1, i);
+        debug!("Record::read p1: {:?}, i: {}", p1, i);
         let (nlo, i): (NumLiveOuts, _) = ReadFrom::<T>::read(b, i)?;
-        println!("Record::read nlo: {:?}, i: {}", nlo, i);
+        debug!("Record::read nlo: {:?}, i: {}", nlo, i);
         let (los, i): (Vec<LiveOut>, _) = ReadMany::<T>::read_many(b, i, &nlo)?;
-        println!("Record::read los: {:?}, i: {}", los, i);
+        debug!("Record::read los: {:?}, i: {}", los, i);
         assert!(i % 4 == 0);
         let (p2, i) = if i % 8 == 0 {
             (None, i) } else {
             let (p2, i): (u32, _) = ReadFrom::<T>::read(b, i)?;
             (Some(p2), i)
         };
-        println!("Record::read p2: {:?}, i: {}", p2, i);
+        debug!("Record::read p2: {:?}, i: {}", p2, i);
         Ok((Record {
             patchpoint_id: pi,
             instruction_offset: io,

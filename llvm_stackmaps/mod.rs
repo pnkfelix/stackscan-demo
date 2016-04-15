@@ -238,7 +238,7 @@ impl<T:ByteOrder> ReadFrom<T> for Header {
 }
 
 macro_rules! impl_read_for_prim {
-    ($t:ident, $read:ident) => {
+    ($t:ident, $read:ident, $debug:expr) => {
         impl<T:ByteOrder> ReadFrom<T> for $t {
             fn read(b: &[u8], i: usize) -> Result<(Self, usize), ReadError> {
                 let size = ::std::mem::size_of::<$t>();
@@ -248,16 +248,21 @@ macro_rules! impl_read_for_prim {
                         at: i,
                     }.into());
                 }
-                Ok((T::$read(b.split_at(i).1), i+size))
+                let ret = Ok((T::$read(b.split_at(i).1), i+size));
+                if $debug {
+                    println!("{}::read({:?}, {}) => {:?}",
+                             stringify!($t), b, i, ret);
+                }
+                ret
             }
         }
     }
 }
 
-impl_read_for_prim!(u16, read_u16);
-impl_read_for_prim!(u32, read_u32);
-impl_read_for_prim!(i32, read_i32);
-impl_read_for_prim!(u64, read_u64);
+impl_read_for_prim!(u16, read_u16, false);
+impl_read_for_prim!(u32, read_u32, false);
+impl_read_for_prim!(i32, read_i32, false);
+impl_read_for_prim!(u64, read_u64, true);
 
 impl<T:ByteOrder> ReadFrom<T> for u8 {
     fn read(b: &[u8], i: usize) -> Result<(Self, usize), ReadError> {

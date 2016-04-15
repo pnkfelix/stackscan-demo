@@ -44,6 +44,7 @@
 
 use byteorder::{ByteOrder, ReadBytesExt};
 
+use std::fmt;
 use std::io::{Read};
 
 pub trait Many {
@@ -417,10 +418,18 @@ pub struct Header {
     reserved_2: u16,
 }
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct StackSize {
     function_address: u64,
     stack_size: u64,
+}
+
+impl fmt::Debug for StackSize {
+    fn fmt(&self, w: &mut fmt::Formatter) -> fmt::Result {
+        write!(w, "StackSize {{ function_address 0x{:x}, stack_size: {} }}",
+               self.function_address,
+               self.stack_size)
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]

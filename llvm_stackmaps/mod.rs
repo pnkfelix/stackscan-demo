@@ -481,3 +481,35 @@ pub struct LiveOut {
     reserved: u8,
     size_in_bytes: u8,
 }
+
+impl StackMap {
+    pub fn header(&self) -> &Header { &self.header }
+    pub fn stack_sizes(&self) -> &[StackSize] { &self.stack_sizes[..] }
+    pub fn large_constants(&self) -> &[LargeConstant] { &self.large_constants[..] }
+    pub fn records(&self) -> &[Record] { &self.records[..] }
+}
+
+impl Header {
+    pub fn version(&self) -> u8 { self.version }
+}
+
+impl StackSize {
+    pub fn function_address(&self) -> u64 { self.function_address }
+    pub fn stack_size(&self) -> u64 { self.stack_size }
+}
+
+impl Record {
+    pub fn patchpoint_id(&self) -> u64 { self.patchpoint_id }
+    pub fn instruction_offset(&self) -> u32 { self.instruction_offset }
+    pub fn locations(&self) -> &[Location] { &self.locations[..] }
+    pub fn live_outs(&self) -> &[LiveOut] { &self.live_outs[..] }
+}
+
+impl Location {
+    pub fn variant(&self) -> &LocationVariant { &self.variant }
+}
+
+impl LiveOut {
+    pub fn regnum(&self) -> u16 { self.dwarf_regnum }
+    pub fn size_in_bytes(&self) -> u8 { self.size_in_bytes }
+}

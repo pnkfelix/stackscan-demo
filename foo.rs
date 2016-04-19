@@ -24,14 +24,17 @@ const DEMO_ID: i64 = 0;
 const SUBCALL_ID: i64 = 1;
 const SUBCALL2_ID: i64 = 2;
 
+#[no_mangle]
 fn subcall(data: *mut u8) {
     println!("Enter `subcall`");
     unsafe {
         intrinsics::stackmap_call(SUBCALL_ID, 0, subcall_2, data);
+        // intrinsics::patchpoint_call(SUBCALL_ID, 13, subcall_2, data);
     }
     println!("Finis `subcall`");
 }
 
+#[no_mangle]
 fn subcall_2(data: *mut u8) {
     println!("Enter `subcall_2`");
     let mut i = 0;
@@ -50,6 +53,8 @@ fn subcall_2(data: *mut u8) {
     println!("]");
     unsafe {
         intrinsics::stackmap_call(SUBCALL2_ID, 0, subcall_3, data);
+        // intrinsics::patchpoint_call(SUBCALL2_ID, 13, subcall_3, data);
+        
     }
     println!("Finis `subcall_2`");
 }
@@ -259,6 +264,7 @@ pub fn demo() -> Result<(), DemoError> {
 
     unsafe {
         intrinsics::stackmap_call(DEMO_ID, 0, subcall, data.as_mut_ptr());
+        // intrinsics::patchpoint_call(DEMO_ID, 13, subcall, data.as_mut_ptr());
     }
     
     println!("Goodbye World");

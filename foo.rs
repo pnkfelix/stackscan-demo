@@ -250,7 +250,7 @@ fn initialize_shared_state() -> Result<(), DemoError> {
 }
 
 #[no_mangle]
-#[rustc_mir(borrowck_graphviz_postflow="/tmp/foo.dot")]
+// #[rustc_mir(borrowck_graphviz_postflow="/tmp/foo.dot")]
 pub fn demo() -> Result<(), DemoError> {
     try!(initialize_shared_state());
     

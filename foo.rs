@@ -135,6 +135,13 @@ impl StackMap {
 
 fn subcall_3(data: *mut u8) {
     println!("Start `subcall_3`");
+    
+    println!("Finis `subcall_3`");
+}
+
+#[cfg(use_backtrace_hack)]
+fn subcall_3(data: *mut u8) {
+    println!("Start `subcall_3`");
     let map = unsafe { STACK_MAP.get() };
     println!("map:                   {:?}", map);
     let addresses = backtrace_hack::backtrace_return_addresses();

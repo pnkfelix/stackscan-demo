@@ -1,4 +1,5 @@
 use libc::{c_char, c_double, c_int, c_void, size_t};
+use std::mem;
 
 #[cfg(target_arch="x86_64")]
 #[path="ucontext_x86_64.rs"]
@@ -72,8 +73,10 @@ struct unw_tdep_save_loc_t {
 
 }
 
+#[link(name="unwind")]
+#[link(name="unwind-x86_64")]
 extern {
-    fn unw_getcontext(ucp: *mut unw_context_t);
+    fn unw_getcontext(ucp: *mut unw_context_t) -> c_int;
     fn unw_init_local(c: *mut unw_cursor_t, ctxt: *mut unw_context_t);
     fn unw_step(cp: *mut unw_cursor_t);
     fn unw_get_reg(cp: *mut unw_cursor_t, reg: unw_regnum_t, valp: *mut unw_word_t);
@@ -101,3 +104,20 @@ extern {
     // fn _U_dyn_register(di: *mut unw_dyn_info_t);
     // fn _U_dyn_cancel(di: *mut unw_dyn_info_t);
 }
+
+pub struct UnwindContext {
+    repr: unw_context_t,
+}
+
+impl UnwindContext {
+    pub fn new() -> UnwindContext {
+        unsafe {
+            let mut c = UnwindContext { repr: mem::uninitialized() };
+            if 0 != unw_getcontext(&mut c.repr as *mut _) {
+                panic!("got error from unw_getcontext");
+            }
+            return c;
+        }
+    }
+}
+                     

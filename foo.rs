@@ -19,6 +19,7 @@ mod elf;
 
 mod backtrace_hack;
 mod llvm_stackmaps;
+mod unwind_hack;
 
 #[path="unravel/src/lib.rs"]
 mod unravel;

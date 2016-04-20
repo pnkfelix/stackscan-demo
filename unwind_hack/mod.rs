@@ -13,11 +13,22 @@ mod ucontext;
 mod sigset;
 mod sigstack;
 
+#[cfg(target_arch="x86_64")]
+const UNW_TDEP_CURSOR_LEN: usize = 127;
+
+#[cfg(target_arch="x86_64")]
+type unw_word_t = usize;
+
+#[repr(C)]
+pub struct unw_cursor_t {
+    opaque: [unw_word_t; UNW_TDEP_CURSOR_LEN],
+}
+
 type unw_context_t = ucontext::ucontext_t;
 
 extern {
     fn unw_getcontext(ucp: *mut unw_context_t);
-    // fn unw_init_local(c: *mut unw_cursor_t, ctxt: *mut unw_context_t);
+    fn unw_init_local(c: *mut unw_cursor_t, ctxt: *mut unw_context_t);
     // fn unw_init_remote(c: *mut unw_cursor_t, as: unw_addr_space_t, arg: *mut c_void);
     // fn unw_step(cp: *mut unw_cursor_t);
     // fn unw_get_reg(cp: *mut unw_cursor_t, reg: unw_regnum_t, valp: *mut unw_word_t);

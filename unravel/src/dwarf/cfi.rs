@@ -1,6 +1,6 @@
 use std::fmt;
 use std::str;
-use dwarf::cfa::CFA;
+use super::cfa::CFA;
 
 pub struct Register(u64);
 pub struct DwarfExpression;

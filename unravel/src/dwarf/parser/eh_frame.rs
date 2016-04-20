@@ -2,9 +2,9 @@ use std::io;
 use std::io::ErrorKind;
 use std::io::Read;
 use std::str;
-use dwarf::cfa::CFA;
-use dwarf::cfi::*;
-use dwarf::reader::DwarfReader;
+use super::super::cfa::CFA;
+use super::super::cfi::*;
+use super::super::reader::DwarfReader;
 
 pub fn read_cfi_entry(reader: &mut io::BufRead) -> io::Result<CFIEntry> {
     let mut reader = DwarfReader(reader);

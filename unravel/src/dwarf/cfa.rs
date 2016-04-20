@@ -1,4 +1,4 @@
-use dwarf::reader::DwarfReader;
+use super::reader::DwarfReader;
 use std::io;
 use std::io::ErrorKind;
 

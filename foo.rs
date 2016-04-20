@@ -20,6 +20,9 @@ mod elf;
 mod backtrace_hack;
 mod llvm_stackmaps;
 
+#[path="unravel/src/lib.rs"]
+mod unravel;
+
 const DEMO_ID: i64 = 0;
 const SUBCALL_ID: i64 = 1;
 const SUBCALL2_ID: i64 = 2;

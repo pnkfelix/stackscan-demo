@@ -84,8 +84,8 @@ impl StackMap {
     pub fn frame_info(&self, addr: ReturnAddress) -> FrameInfo {
         let mut frame_info = None;
 
-        println!("");
-        println!("addr: {:?}", addr);
+        debug!("");
+        debug!("addr: {:?}", addr);
         
 	if let Some(base) = dlinfo_fbase(addr.0) {
             // Okay, we have a base address for the shared object of addr
@@ -100,7 +100,7 @@ impl StackMap {
                 let instr_offset = r.instruction_offset() as usize;
                 let call_address = fn_address + instr_offset;
 
-                println!("frame_info addr {:?} \
+                debug!("frame_info addr {:?} \
                                      record {:?} \
                                      fn_address: 0x{:x} \
                                      instr_offset: {:?} \

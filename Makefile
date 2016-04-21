@@ -14,3 +14,5 @@ cfoo: foo.c
 run-cfoo: cfoo
 	./cfoo
 
+clean:
+	rm -f foo cfoo

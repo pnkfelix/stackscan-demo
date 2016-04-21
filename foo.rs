@@ -135,7 +135,7 @@ impl StackMap {
 
 fn subcall_3(data: *mut u8) {
     println!("Start `subcall_3`");
-    
+    let unw = unwind_hack::UnwindContext::new();
     println!("Finis `subcall_3`");
 }
 

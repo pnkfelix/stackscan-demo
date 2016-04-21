@@ -76,6 +76,8 @@ struct unw_tdep_save_loc_t {
 #[link(name="unwind")]
 #[link(name="unwind-x86_64")]
 extern {
+    #[cfg(target_arch="x86_64")]
+    #[link_name="_Ux86_64_getcontext"]
     fn unw_getcontext(ucp: *mut unw_context_t) -> c_int;
     fn unw_init_local(c: *mut unw_cursor_t, ctxt: *mut unw_context_t);
     fn unw_step(cp: *mut unw_cursor_t);
@@ -83,10 +85,11 @@ extern {
     fn unw_get_fpreg(cp: *mut unw_cursor_t, reg: unw_regnum_t, valp: *mut unw_fpreg_t);
     fn unw_resume(cp: *mut unw_cursor_t);
 
-    // I think the methods below are solely used for "remote
+    // I think the methods (and global) below are solely used for "remote
     // unwinding", which is not immediately relevant to me, so I need
     // not worry about finding definition for `struct unw_addr_space`.
     
+    // static unw_local_addr_space: unw_addr_space_t;
     // fn unw_init_remote(c: *mut unw_cursor_t, as: unw_addr_space_t, arg: *mut c_void);
     // fn unw_create_addr_space(ap: *mut unw_accessors_t, byteorder: c_int);
     // fn unw_destroy_addr_space(as: unw_addr_space_t);

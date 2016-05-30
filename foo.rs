@@ -133,6 +133,10 @@ impl StackMapExt for StackMap {
 #[no_mangle]
 pub extern "C" fn subcall_3(_data: *mut u8) {
     println!("Start `subcall_3`");
+
+    let map = unsafe { STACK_MAP.get() };
+    println!("map:                              {:?}", map);
+
     let unw = unwind_hack::UnwindContext::new();
     let mut cursor = Some(unw.cursor());
 
@@ -158,8 +162,6 @@ pub extern "C" fn subcall_3(_data: *mut u8) {
                 Ok(offset) => (offset, String::from_utf8(buf).unwrap()),
             }
         };
-        let map = unsafe { STACK_MAP.get() };
-        println!("map:                              {:?}", map);
         println!("ip: 0x{:08x} name: {} offset: {}", ip, name, offset);
         println!("start of fn:  0x{:08x}", ip - offset);
         if let Some(fbase) = opt_fbase {

@@ -105,8 +105,8 @@ fn read_common_info<R: io::BufRead>(reader: &mut DwarfReader<R>,
     })
 }
 
-fn read_frame_description<R: io::BufRead>(reader: &mut DwarfReader<R>,
-                                          header: CFIHeader)
+fn read_frame_description<R: io::BufRead>(_reader: &mut DwarfReader<R>,
+                                          _header: CFIHeader)
                                           -> io::Result<FrameDescription> {
     unimplemented!();
 }

@@ -85,7 +85,7 @@ impl StackMapExt for StackMap {
         debug!("");
         debug!("addr: {:?}", addr);
         
-	if let Some(base) = dlinfo_fbase(addr.0) {
+	if let Some(_base) = dlinfo_fbase(addr.0) {
             // Okay, we have a base address for the shared object of addr
 
             // We still need to find the function itself as well as
@@ -131,7 +131,7 @@ impl StackMapExt for StackMap {
 }
 
 #[no_mangle]
-pub extern "C" fn subcall_3(data: *mut u8) {
+pub extern "C" fn subcall_3(_data: *mut u8) {
     println!("Start `subcall_3`");
     let unw = unwind_hack::UnwindContext::new();
     let mut cursor = Some(unw.cursor());
@@ -205,7 +205,6 @@ impl std::convert::From<elf::ParseError> for DemoError {
 
 use self::llvm_stackmaps::{LiveOut, Location, StackMap};
 use std::cell::UnsafeCell;
-use std::sync::RwLock;
 
 struct SharedStackMap {
     map: UnsafeCell<Option<StackMap>>

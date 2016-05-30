@@ -1,7 +1,10 @@
 //! This file is a port of the libunwind.h header declarations of the
 //! LLVM fork of libunwind.
 
-use libc::{self, c_char, c_double, c_int, c_void, size_t};
+#![allow(non_camel_case_types)]
+#![allow(dead_code)]
+
+use libc::{self, c_char, c_int, size_t};
 use std::mem;
 use std::ffi::CStr;
 
@@ -93,6 +96,7 @@ pub type unw_word_t = u64;
 #[cfg(not(target_arch="arm"))]
 pub type unw_fpreg_t = f64;
 
+#[repr(C)]
 pub struct unw_proc_info_t {
     /// start address of function
     start_ip: unw_word_t,
@@ -637,11 +641,9 @@ impl UnwindCursor {
     fn ffi_ret<C>(&self, context: &'static str, c: C) -> Result<c_int, UnwindError>
         where C: FnOnce(*const unw_cursor_t) -> c_int
     {
-        unsafe {
-            match c(&self.repr as *const _) {
-                x if x >= 0 => Ok(x),
-                x => Err(match_errs!(x, panic!("got error from {}", context))),
-            }
+        match c(&self.repr as *const _) {
+            x if x >= 0 => Ok(x),
+            x => Err(match_errs!(x, panic!("got error from {}", context))),
         }
     }
 
@@ -657,7 +659,7 @@ impl UnwindCursor {
         }
     }
     
-    pub fn step(mut self) -> Result<Option<UnwindCursor>, UnwindError> {
+    pub fn step(self) -> Result<Option<UnwindCursor>, UnwindError> {
         self.ffi_ret("unw_step", |cursor| unsafe { unw_step(cursor as *mut _) })
             .map(|x| if x == 0 { None } else { Some(self) })
     }

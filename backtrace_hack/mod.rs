@@ -1,4 +1,4 @@
-use libc::{c_char, c_int, c_void};
+use libc::{c_char, c_void};
 use std::ffi::CStr;
 use std::mem;
 use std::ptr;
@@ -10,6 +10,7 @@ mod bt {
                          size: c_int) -> c_int;
         pub fn backtrace_symbols(buffer: *mut *const c_void,
                                  size: c_int) -> *mut *mut c_char;
+        #[cfg(not_now)]
         pub fn backtrace_symbols_fd(buffer: *mut *const c_void,
                                     size: c_int,
                                     fd: c_int);
@@ -17,7 +18,7 @@ mod bt {
 }
 
 mod dl {
-    use libc::{self, c_char, c_uchar, c_int, c_void};
+    use libc::{c_char, c_int, c_void};
     #[derive(Debug)]
     #[repr(C)]
     pub struct Dl_info {
@@ -30,26 +31,32 @@ mod dl {
     extern {
         pub fn dladdr(addr: *mut c_void,
                       info: *mut Dl_info) -> c_int;
+        #[cfg(not_now)]
         pub fn dladdr1(addr: *mut c_void,
                        info: *mut Dl_info,
                        extra_info: *mut *mut c_void,
                        flags: c_int) -> c_int;
     }
 
+    #[cfg(not_now)]
     const RTLD_DL_LINKMAP: i32 = 2;
+    #[cfg(not_now)]
     const RTLD_DL_SYMENT: i32 = 1;
 
     pub trait RequestFlags {
         fn flags(&self) -> c_int;
     }
 
+    #[cfg(not_now)]
     impl RequestFlags for LinkMap {
         fn flags(&self) -> c_int { RTLD_DL_LINKMAP as c_int }
     }
+    #[cfg(not_now)]
     impl RequestFlags for SymEnt {
         fn flags(&self) -> c_int { RTLD_DL_SYMENT as c_int }
     }
 
+    #[cfg(not_now)]
     #[repr(C)]
     pub struct LinkMap {
         l_addr: libc::size_t,
@@ -59,6 +66,7 @@ mod dl {
         l_prev: *mut LinkMap,
     }
 
+    #[cfg(not_now)]
     #[repr(C)]
     #[cfg(target_pointer_width = "32")]
     pub struct SymEnt {
@@ -76,6 +84,7 @@ mod dl {
         st_shndx: u16,
     }
 
+    #[cfg(not_now)]
     #[repr(C)]
     #[cfg(target_pointer_width = "64")]
     pub struct SymEnt {
@@ -100,6 +109,7 @@ mod dl {
         d_un: u32,
     }
 
+    #[cfg(not_now)]
     #[cfg(target_pointer_width = "64")]
     #[repr(C)]
     pub struct ElfDyn {
@@ -121,7 +131,6 @@ pub fn backtrace_return_addresses() -> Vec<ReturnAddress> {
     let height = stack_height();
     let word_size = mem::size_of::<usize>();
     let rounded_height = (height + (word_size - 1)) / word_size;
-    assert!(rounded_height >= 0);
     assert!(rounded_height <= ::std::i32::MAX as usize);
     let mut buffer: Vec<*const c_void> = vec![ptr::null(); rounded_height];
     let rounded_height = rounded_height as i32;
@@ -141,7 +150,7 @@ pub fn backtrace_symbols(addresses: &Vec<ReturnAddress>) -> Vec<&'static CStr> {
         let strings = bt::backtrace_symbols(mem::transmute(addresses.as_ptr()),
                                             addresses.len() as i32);
         for i in 0..addresses.len() {
-            let c_str = unsafe { CStr::from_ptr(*strings.offset(i as isize)) };
+            let c_str = CStr::from_ptr(*strings.offset(i as isize));
             symbols.push(c_str);
         }
     }

@@ -10,7 +10,11 @@ default: run-foo
 run-foo: foo
 	./foo
 
-libutil.rlib: $(shell find . -name '*.rs') $(RUSTC) Makefile
+SUBMODS=$(foreach path,$(wildcard */mod.rs),$(subst /mod.rs,,$(path)))
+
+# $(info SUBMODS $(SUBMODS))
+
+libutil.rlib: util.rs $(find $(SUBMODS) -name '*.rs') $(RUSTC) Makefile
 	LIBRARY_PATH=$(LIBRARY_PATH) $(RUSTC) $(RUSTFLAGS) -g util.rs -Z orbit -C link-dead-code -C "link-args=-Wl,-rpath=$(UW_PATH),--export-dynamic -lunwind" -Z print-link-args 
 
 foo: foo.rs libutil.rlib $(RUSTC) Makefile

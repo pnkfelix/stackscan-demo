@@ -14,7 +14,7 @@ extern crate libc;
 extern crate util;
 
 pub use util::*;
-use util::unwind_hack::{unw_word_t, unw_regnum_t};
+use util::unwind_hack::{unw_regnum_t};
 use util::llvm_stackmaps::LocationVariant;
     
 use std::intrinsics;
@@ -34,7 +34,6 @@ pub extern "C" fn subcall_1(data: *mut u8) {
 }
 
 #[linkage="external"]
-#[no_mangle]
 extern "C" fn subcall_2(data: *mut u8) {
     println!("Enter `subcall_2`");
     let mut i = 0;
@@ -179,26 +178,30 @@ pub extern "C" fn subcall_3(_data: *mut u8) {
             if address_id(rec.patchpoint_id()) == Some((ip - offset) as usize) &&
                 rec.instruction_offset() as u64 == offset
             {
-                println!("found match ({}): {:?}", i, rec);
+                println!("found match at ({}) for `{}`: {:?}", i, name, rec);
                 for (j, loc) in rec.locations().iter().enumerate() {
-                    let loc_interpreted: unw_word_t = match *loc.variant() {
+                    let loc_interpreted: i64 = match *loc.variant() {
                         LocationVariant::Register { dwarf_regnum } => {
-                            c.get_reg(dwarf_regnum as unw_regnum_t)?
+                            c.get_reg(dwarf_regnum as unw_regnum_t).unwrap() as i64
                         }
                         LocationVariant::Direct { dwarf_regnum, offset } => {
-                            c.get_reg(dwarf_regnum as unw_regnum_t)?
+                            c.get_reg(dwarf_regnum as unw_regnum_t).unwrap() as i64 + offset as i64
                         }
                         LocationVariant::Indirect { dwarf_regnum, offset } => {
-                            c.get_reg(dwarf_regnum as unw_regnum_t)?
+                            unsafe {
+                                *((c.get_reg(dwarf_regnum as unw_regnum_t).unwrap() as i64 +
+                                   offset as i64)
+                                  as usize as *const usize) as i64
+                            }
                         }
                         LocationVariant::Constant { value } => {
-                            value
+                            value as i64
                         }
                         LocationVariant::ConstIndex { offset } => {
                             unimplemented!()
                         }
                     };
-                    println!("rec[{}].loc[{}] {:?} => {:?}",
+                    println!("rec[{}].loc[{}] {:?} => 0x{:x}",
                              i, j, loc, loc_interpreted);
                 }
             }

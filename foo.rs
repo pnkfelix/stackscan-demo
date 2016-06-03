@@ -5,6 +5,7 @@
 #![feature(libc)]
 #![feature(const_fn)]
 #![feature(rustc_private)]
+#![feature(linkage)]
 #![allow(unused_features)]
 
 extern crate libc;
@@ -13,9 +14,10 @@ extern crate libc;
 extern crate util;
 
 pub use util::*;
-
+use util::unwind_hack::{unw_word_t, unw_regnum_t};
+use util::llvm_stackmaps::LocationVariant;
+    
 use std::intrinsics;
-
 
 const DEMO_ID: i64 = 0;
 const SUBCALL1_ID: i64 = 1;
@@ -31,8 +33,9 @@ pub extern "C" fn subcall_1(data: *mut u8) {
     println!("Finis `subcall_1`");
 }
 
+#[linkage="external"]
 #[no_mangle]
-pub extern "C" fn subcall_2(data: *mut u8) {
+extern "C" fn subcall_2(data: *mut u8) {
     println!("Enter `subcall_2`");
     let mut i = 0;
     let mut saw_one = false;
@@ -136,6 +139,11 @@ pub extern "C" fn subcall_3(_data: *mut u8) {
 
     let map = unsafe { STACK_MAP.get() };
     println!("map:                              {:?}", map);
+    unsafe {
+        for i in 0..ADDRESS_IDS.len() {
+            println!("ADDRESS_IDS[i] 0x{:x}", ADDRESS_IDS[i]);
+        }
+    }
 
     let unw = unwind_hack::UnwindContext::new();
     let mut cursor = Some(unw.cursor());
@@ -143,11 +151,11 @@ pub extern "C" fn subcall_3(_data: *mut u8) {
     while let Some(c) = cursor {
         let ip = c.get_reg(unwind_hack::UNW_REG_IP).unwrap();
         let sp = c.get_reg(unwind_hack::UNW_REG_SP).unwrap();
-        println!("ip: 0x{:x} sp: 0x{:x}", ip, sp);
+        debug!("ip: 0x{:x} sp: 0x{:x}", ip, sp);
         let opt_fbase = backtrace_hack::dlinfo_fbase(ip as *const libc::c_void);
-        println!("dlinfo_fbase: {:?}", opt_fbase);
+        debug!("dlinfo_fbase: {:?}", opt_fbase);
         if let Some(fbase) = opt_fbase {
-            println!("dlrel ip: 0x{:x}", ip - (fbase as u64));
+            debug!("dlrel ip: 0x{:x}", ip - (fbase as u64));
         }
 
         let (offset, name) = {
@@ -162,11 +170,40 @@ pub extern "C" fn subcall_3(_data: *mut u8) {
                 Ok(offset) => (offset, String::from_utf8(buf).unwrap()),
             }
         };
-        println!("ip: 0x{:08x} name: {} offset: {}", ip, name, offset);
-        println!("start of fn:  0x{:08x}", ip - offset);
+        debug!("ip: 0x{:08x} name: {} offset: {}", ip, name, offset);
+        debug!("start of fn:  0x{:08x}", ip - offset);
         if let Some(fbase) = opt_fbase {
-            println!("rel start of fn:  0x{:08x}", ip - offset - (fbase as u64));
+            debug!("rel start of fn:  0x{:08x}", ip - offset - (fbase as u64));
         }
+        for (i, rec) in map.records().iter().enumerate() {
+            if address_id(rec.patchpoint_id()) == Some((ip - offset) as usize) &&
+                rec.instruction_offset() as u64 == offset
+            {
+                println!("found match ({}): {:?}", i, rec);
+                for (j, loc) in rec.locations().iter().enumerate() {
+                    let loc_interpreted: unw_word_t = match *loc.variant() {
+                        LocationVariant::Register { dwarf_regnum } => {
+                            c.get_reg(dwarf_regnum as unw_regnum_t)?
+                        }
+                        LocationVariant::Direct { dwarf_regnum, offset } => {
+                            c.get_reg(dwarf_regnum as unw_regnum_t)?
+                        }
+                        LocationVariant::Indirect { dwarf_regnum, offset } => {
+                            c.get_reg(dwarf_regnum as unw_regnum_t)?
+                        }
+                        LocationVariant::Constant { value } => {
+                            value
+                        }
+                        LocationVariant::ConstIndex { offset } => {
+                            unimplemented!()
+                        }
+                    };
+                    println!("rec[{}].loc[{}] {:?} => {:?}",
+                             i, j, loc, loc_interpreted);
+                }
+            }
+        }
+        
         cursor = c.step().unwrap();
         println!("");
     }

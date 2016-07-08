@@ -201,7 +201,7 @@ pub fn subcall_3(_data: *mut u8) {
                         LocationVariant::Constant { value } => {
                             value as i64
                         }
-                        LocationVariant::ConstIndex { offset } => {
+                        LocationVariant::ConstIndex { offset: _ } => {
                             unimplemented!()
                         }
                     };

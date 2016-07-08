@@ -529,7 +529,7 @@ impl fmt::Display for ProgramHeader {
     }
 }
 
-/// Represens ELF Section type
+/// Represents ELF Section type
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct SectionType(pub u32);
 /// Inactive section with undefined values

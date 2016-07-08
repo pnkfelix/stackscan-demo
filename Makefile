@@ -12,6 +12,11 @@ run-foo: foo
 
 SUBMODS=$(foreach path,$(wildcard */mod.rs),$(subst /mod.rs,,$(path)))
 
+$(info RUSTC $(RUSTC))
+$(info RUSTFLAGS $(RUSTFLAGS))
+$(info UW_PATH $(UW_PATH))
+$(info LIBRARY_PATH $(LIBRARY_PATH))
+
 # $(info SUBMODS $(SUBMODS))
 
 libutil.rlib: util.rs $(find $(SUBMODS) -name '*.rs') $(RUSTC) Makefile

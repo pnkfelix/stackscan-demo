@@ -6,6 +6,8 @@
 #![feature(const_fn)]
 #![feature(rustc_private)]
 #![feature(linkage)]
+#![feature(drop_types_in_const)]
+#![feature(unboxed_closures)]
 #![allow(unused_features)]
 
 extern crate libc;
@@ -16,7 +18,9 @@ extern crate util;
 pub use util::*;
 use util::unwind_hack::{unw_regnum_t};
 use util::llvm_stackmaps::LocationVariant;
-    
+
+use elf::Section;
+
 use std::intrinsics;
 
 const DEMO_ID: i64 = 0;
@@ -24,7 +28,7 @@ const SUBCALL1_ID: i64 = 1;
 const SUBCALL2_ID: i64 = 2;
 
 #[no_mangle]
-pub extern "C" fn subcall_1(data: *mut u8) {
+pub fn subcall_1(data: *mut u8) {
     println!("Enter `subcall_1`");
     unsafe {
         intrinsics::stackmap_call(SUBCALL1_ID, 0, subcall_2, data);
@@ -34,7 +38,7 @@ pub extern "C" fn subcall_1(data: *mut u8) {
 }
 
 #[linkage="external"]
-extern "C" fn subcall_2(data: *mut u8) {
+fn subcall_2(data: *mut u8) {
     println!("Enter `subcall_2`");
     let mut i = 0;
     let mut saw_one = false;
@@ -133,7 +137,7 @@ impl StackMapExt for StackMap {
 }
 
 #[no_mangle]
-pub extern "C" fn subcall_3(_data: *mut u8) {
+pub fn subcall_3(_data: *mut u8) {
     println!("Start `subcall_3`");
 
     let map = unsafe { STACK_MAP.get() };
@@ -278,8 +282,49 @@ fn address_id(patchpoint_id: u64) -> Option<usize> {
     }
 }
 
-fn initialize_shared_state() -> Result<(), DemoError> {
+#[derive(Debug)]
+pub struct FnPtrData(i64, *const libc::c_void);
+
+impl FnPtrData {
+    const fn new<T, F>(id: i64, f: *const F) -> Self where F: Fn<T> {
+        FnPtrData(id, f as *const libc::c_void)
+    }
+}
+
+unsafe impl Sync for FnPtrData { }
+
+#[link_section = ".fn_id_data"]
+pub static DEMO_ID_DATA: FnPtrData = FnPtrData::new(DEMO_ID, &demo);
+
+#[link_section = ".fn_id_data"]
+pub static SUBCALL1_ID_DATA: FnPtrData = FnPtrData::new(SUBCALL1_ID, &subcall_1);
+
+#[link_section = ".fn_id_data"]
+pub static SUBCALL2_ID_DATA: FnPtrData = FnPtrData::new(SUBCALL2_ID, &subcall_2);
+
+fn my_binary() -> Result<elf::File, elf::ParseError> {
     use std::path::Path;
+    // FIXME: this is not a reliable way to extract the executable file path.
+    // (look into alternatives)
+    let binary = std::env::args().next().unwrap();
+    
+    println!("Hello World from {}", binary);
+
+    let path = Path::new(&binary);
+    elf::File::open_path(&path)
+}
+
+fn my_section<'a>(file: &'a elf::File, section_name: &str) -> Result<&'a Section, DemoError> {
+    let name = section_name.to_string();
+    file.get_section(name.clone())
+        .ok_or_else(|| DemoError::MissingSection(name))
+}
+
+fn fn_ids(file: &elf::File) -> Result<&[FnPtrData], DemoError> {
+    Ok(unsafe { ::std::mem::transmute(&my_section(file, ".fn_id_data")?.data[..]) })
+}
+
+fn initialize_shared_state() -> Result<(), DemoError> {
     use self::byteorder::LittleEndian;
 
     // FIXME: LLVM's stackmap/patchpoint intrinsic API does
@@ -311,21 +356,15 @@ fn initialize_shared_state() -> Result<(), DemoError> {
         ADDRESS_IDS[SUBCALL2_ID as usize] = subcall_2 as usize;
     }
 
-    // FIXME: this is not a reliable way to extract the executable file path.
-    // (look into alternatives)
-    let binary = std::env::args().next().unwrap();
+
+    let file = my_binary()?;
+    let fn_id_data = fn_ids(&file)?;
+    println!("fn_id_data section: {:?}", fn_id_data);
+    unsafe {
+        println!("ADDRESS_IDS: 0x{:x} 0x{:x} 0x{:x}", ADDRESS_IDS[0], ADDRESS_IDS[1], ADDRESS_IDS[2]);
+    }
     
-    println!("Hello World from {}", binary);
-
-    let path = Path::new(&binary);
-    let file = elf::File::open_path(&path)?;
-
-    let stackmap_section = {
-        let name = ".llvm_stackmaps".to_string();
-        file.get_section(name.clone())
-            .ok_or_else(|| DemoError::MissingSection(name))?
-    };
-
+    let stackmap_section = my_section(&file, ".llvm_stackmaps")?;
     println!("stackmap_section: {:?}", stackmap_section);
 
     let stack_map = StackMap::read_from::<LittleEndian>(&mut &stackmap_section.data[..]);

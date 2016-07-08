@@ -284,23 +284,25 @@ fn address_id(patchpoint_id: u64) -> Option<usize> {
 
 #[derive(Debug)]
 pub struct FnPtrData(i64, *const libc::c_void);
-
-impl FnPtrData {
-    const fn new<T, F>(id: i64, f: *const F) -> Self where F: Fn<T> {
-        FnPtrData(id, f as *const libc::c_void)
-    }
-}
-
 unsafe impl Sync for FnPtrData { }
 
+#[no_mangle]
 #[link_section = ".fn_id_data"]
-pub static DEMO_ID_DATA: FnPtrData = FnPtrData::new(DEMO_ID, &demo);
+pub static DEMO_ID_DATA: FnPtrData = FnPtrData(DEMO_ID, demo as _);
 
+#[no_mangle]
 #[link_section = ".fn_id_data"]
-pub static SUBCALL1_ID_DATA: FnPtrData = FnPtrData::new(SUBCALL1_ID, &subcall_1);
+pub static SUBCALL1_ID_DATA: FnPtrData = FnPtrData(SUBCALL1_ID, subcall_1 as _);
 
+#[no_mangle]
 #[link_section = ".fn_id_data"]
-pub static SUBCALL2_ID_DATA: FnPtrData = FnPtrData::new(SUBCALL2_ID, &subcall_2);
+pub static SUBCALL2_ID_DATA: FnPtrData = FnPtrData(SUBCALL2_ID, subcall_2 as _);
+
+pub static FN_IDS: [FnPtrData; 3] = [
+    FnPtrData(DEMO_ID, demo as _),
+    FnPtrData(SUBCALL1_ID, subcall_1 as _),
+    FnPtrData(SUBCALL2_ID, subcall_2 as _),
+    ];
 
 fn my_binary() -> Result<elf::File, elf::ParseError> {
     use std::path::Path;
@@ -320,8 +322,13 @@ fn my_section<'a>(file: &'a elf::File, section_name: &str) -> Result<&'a Section
         .ok_or_else(|| DemoError::MissingSection(name))
 }
 
-fn fn_ids(file: &elf::File) -> Result<&[FnPtrData], DemoError> {
-    Ok(unsafe { ::std::mem::transmute(&my_section(file, ".fn_id_data")?.data[..]) })
+fn fn_ids(file: &elf::File) -> Result<(&elf::types::SectionHeader, &[FnPtrData]), DemoError> {
+    let fn_id_data = my_section(file, ".fn_id_data")?;
+    let hdr = &fn_id_data.shdr;
+    Ok((hdr, unsafe {
+        std::slice::from_raw_parts(fn_id_data.data.as_ptr() as *const FnPtrData,
+                                   hdr.size as usize / std::mem::size_of::<FnPtrData>())
+    }))
 }
 
 fn initialize_shared_state() -> Result<(), DemoError> {
@@ -360,9 +367,7 @@ fn initialize_shared_state() -> Result<(), DemoError> {
     let file = my_binary()?;
     let fn_id_data = fn_ids(&file)?;
     println!("fn_id_data section: {:?}", fn_id_data);
-    unsafe {
-        println!("ADDRESS_IDS: 0x{:x} 0x{:x} 0x{:x}", ADDRESS_IDS[0], ADDRESS_IDS[1], ADDRESS_IDS[2]);
-    }
+    println!("FN_IDS: 0x{:?} 0x{:?} 0x{:?}", FN_IDS[0], FN_IDS[1], FN_IDS[2]);
     
     let stackmap_section = my_section(&file, ".llvm_stackmaps")?;
     println!("stackmap_section: {:?}", stackmap_section);

@@ -439,7 +439,7 @@ impl fmt::Debug for StackSize {
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct LargeConstant {
-    value: u64,
+    pub value: u64,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]

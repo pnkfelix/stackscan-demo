@@ -201,8 +201,10 @@ pub fn subcall_3(_data: *mut u8) {
                         LocationVariant::Constant { value } => {
                             value as i64
                         }
-                        LocationVariant::ConstIndex { offset: _ } => {
-                            unimplemented!()
+                        LocationVariant::ConstIndex { offset } => {
+                            assert!(offset >= 0);
+                            assert!((offset as usize) < ::std::usize::MAX);
+                            map.large_constants()[offset as usize].value as i64
                         }
                     };
                     println!("rec[{}].loc[{}] {:?} => 0x{:x}",

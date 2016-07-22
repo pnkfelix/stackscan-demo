@@ -42,10 +42,9 @@
 //! }
 //! ```
 
-use byteorder::{ByteOrder, ReadBytesExt};
+use byteorder::{ByteOrder};
 
 use std::fmt;
-use std::io::{Read};
 
 pub trait Many {
     type Count;

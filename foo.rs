@@ -1,3 +1,4 @@
+#![feature(stack_reflection)]
 #![feature(core_intrinsics, patchpoint_call_intrinsic, stackmap_call_intrinsic)]
 #![feature(question_mark)]
 // #![feature(type_ascription)]
@@ -30,10 +31,12 @@ const SUBCALL2_ID: i64 = 2;
 #[no_mangle]
 pub fn subcall_1(data: *mut u8) {
     println!("Enter `subcall_1`");
+    let root_subcall = MyRoot("root_subcall");
     unsafe {
         intrinsics::stackmap_call(SUBCALL1_ID, 0, subcall_2, data);
         // intrinsics::patchpoint_call(SUBCALL1_ID, 13, subcall_2, data);
     }
+    println!("root_subcall: {:?}", &root_subcall as *const _);
     println!("Finis `subcall_1`");
 }
 
@@ -144,7 +147,7 @@ pub fn subcall_3(_data: *mut u8) {
     println!("map:                              {:?}", map);
     unsafe {
         for i in 0..ADDRESS_IDS.len() {
-            println!("ADDRESS_IDS[i] 0x{:x}", ADDRESS_IDS[i]);
+            println!("ADDRESS_IDS[{}] 0x{:x}", i, ADDRESS_IDS[i]);
         }
     }
 
@@ -173,46 +176,77 @@ pub fn subcall_3(_data: *mut u8) {
                 Ok(offset) => (offset, String::from_utf8(buf).unwrap()),
             }
         };
-        debug!("ip: 0x{:08x} name: {} offset: {}", ip, name, offset);
-        debug!("start of fn:  0x{:08x}", ip - offset);
+        println!("");
+        println!("ip: 0x{:08x} name: {} offset: {}", ip, name, offset);
+        println!("start of fn:  0x{:08x}", ip - offset);
         if let Some(fbase) = opt_fbase {
-            debug!("rel start of fn:  0x{:08x}", ip - offset - (fbase as u64));
+            println!("rel start of fn:  0x{:08x}", ip - offset - (fbase as u64));
         }
+        println!("");
+        let mut curr_delta = ::std::u64::MAX;
+        let mut curr: Option<(usize, &_)> = None;
         for (i, rec) in map.records().iter().enumerate() {
-            if address_id(rec.patchpoint_id()) == Some((ip - offset) as usize) &&
-                rec.instruction_offset() as u64 == offset
-            {
-                println!("found match at ({}) for `{}`: {:?}", i, name, rec);
-                for (j, loc) in rec.locations().iter().enumerate() {
-                    let loc_interpreted: i64 = match *loc.variant() {
-                        LocationVariant::Register { dwarf_regnum } => {
-                            c.get_reg(dwarf_regnum as unw_regnum_t).unwrap() as i64
-                        }
-                        LocationVariant::Direct { dwarf_regnum, offset } => {
-                            c.get_reg(dwarf_regnum as unw_regnum_t).unwrap() as i64 + offset as i64
-                        }
-                        LocationVariant::Indirect { dwarf_regnum, offset } => {
-                            unsafe {
-                                *((c.get_reg(dwarf_regnum as unw_regnum_t).unwrap() as i64 +
-                                   offset as i64)
-                                  as usize as *const usize) as i64
-                            }
-                        }
-                        LocationVariant::Constant { value } => {
-                            value as i64
-                        }
-                        LocationVariant::ConstIndex { offset } => {
-                            assert!(offset >= 0);
-                            assert!((offset as usize) < ::std::usize::MAX);
-                            map.large_constants()[offset as usize].value as i64
-                        }
-                    };
-                    println!("rec[{}].loc[{}] {:?} => 0x{:x}",
-                             i, j, loc, loc_interpreted);
+            let pp_id = rec.patchpoint_id();
+            let rec_fn_start = address_id(pp_id);
+            let curr_fn_start = Some((ip - offset) as usize);
+            let rec_offset = rec.instruction_offset() as u64;
+            if rec_fn_start == curr_fn_start && rec_offset >= offset {
+                let delta = rec_offset - offset;
+                if delta == 0 {
+                    curr_delta = 0;
+                    curr = Some((i, rec));
+                    break;
+                } else if delta < curr_delta {
+                    curr_delta = delta;
+                    curr = Some((i, rec));
                 }
             }
         }
-        
+
+        if let Some((i, rec)) = curr {
+            if curr_delta == 0 {
+                println!("");
+                println!("found match at ({}) for `{}`: {:?}", i, name, rec);
+                println!("");
+            } else {
+                println!("");
+                println!("closest match (delta={}) at ({}) for `{}`: {:?}",
+                         curr_delta, i, name, rec);
+                println!("");
+            }
+
+            for (j, loc) in rec.locations().iter().enumerate() {
+                let loc_interpreted: i64 = match *loc.variant() {
+                    LocationVariant::Register { dwarf_regnum } => {
+                        c.get_reg(dwarf_regnum as unw_regnum_t).unwrap() as i64
+                    }
+                    LocationVariant::Direct { dwarf_regnum, offset } => {
+                        c.get_reg(dwarf_regnum as unw_regnum_t).unwrap() as i64 + offset as i64
+                    }
+                    LocationVariant::Indirect { dwarf_regnum, offset } => {
+                        unsafe {
+                            *((c.get_reg(dwarf_regnum as unw_regnum_t).unwrap() as i64 +
+                               offset as i64)
+                              as usize as *const usize) as i64
+                        }
+                    }
+                    LocationVariant::Constant { value } => {
+                        value as i64
+                    }
+                    LocationVariant::ConstIndex { offset } => {
+                        assert!(offset >= 0);
+                        assert!((offset as usize) < ::std::usize::MAX);
+                        map.large_constants()[offset as usize].value as i64
+                    }
+                };
+                println!("rec[{}].loc[{}] {:?} => 0x{:x}",
+                         i, j, loc, loc_interpreted);
+            }
+        } else {
+            println!("skipping ip: 0x{:08x} name: {} offset: {}",
+                     ip, name, offset);
+        }
+
         cursor = c.step().unwrap();
         println!("");
     }
@@ -381,19 +415,44 @@ fn initialize_shared_state() -> Result<(), DemoError> {
     Ok(())
 }
 
+struct MyRoot(&'static str);
+
+use std::marker::Scan;
+impl std::marker::Root for MyRoot { }
+impl Scan for MyRoot {
+    fn scan(&self, _: &mut std::any::Any) {
+        println!("scanned MyRoot({})", self.0);
+    }
+}
+
 #[no_mangle]
 // #[rustc_mir(borrowck_graphviz_postflow="/tmp/foo.dot")]
 pub fn demo() -> Result<(), DemoError> {
     try!(initialize_shared_state());
-    
+
     let mut data = vec![b'h', b'e', b'l', b'l', b'o', 0];
     println!("data addr: {:?}", &data as *const _);
+
+    let root_a = MyRoot("rootA");
+    let roots_bc = (MyRoot("rootB"), MyRoot("rootC"));
+    let roots_def = [MyRoot("rootD"), MyRoot("rootE"), MyRoot("rootF")];
+    let roots_geh: Box<[MyRoot]> = Box::new([MyRoot("rootD"), MyRoot("rootE"), MyRoot("rootF")]);
+    let roots_ijk = vec![MyRoot("rootI"), MyRoot("rootJ"), MyRoot("rootK")];
+
+    println!("root_a: {:?}", &root_a as *const _);
+    println!("roots_bc: {:?}", &roots_bc as *const _);
+    println!("roots_def: {:?}", &roots_def as *const _);
+    println!("roots_geh: {:?}", &roots_geh as *const _);
+    println!("roots_ijk: {:?}", &roots_ijk as *const _);
+
+    // let root_scan = <MyRoot as Scan>::scan;
+    // root_scan(&root_a, &mut () as &mut ::std::any::Any);
 
     unsafe {
         intrinsics::stackmap_call(DEMO_ID, 0, subcall_1, data.as_mut_ptr());
         // intrinsics::patchpoint_call(DEMO_ID, 13, subcall_1, data.as_mut_ptr());
     }
-    
+
     println!("Goodbye World");
 
     Ok(())
